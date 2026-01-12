@@ -1,84 +1,178 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-const slogans = [
-  "Turn chats into apps",
-  "Prompt. Ship. Repeat.",
-  "Build anything from a chat",
-  "Ideas → Apps, instantly",
-  "From zero to MVP in minutes",
-  "Your cofounder in the command line",
-  "Draft, iterate, deploy",
-  "Ship faster than you can type",
-  "Design in text, deliver in code",
-  "Dream it. Prompt it. Run it.",
-  "Chat-native app building",
-  "From prompt to product",
-  "One prompt, infinite apps",
-  "Stop scaffolding. Start shipping.",
-  "Prototype at the speed of thought",
-  "Make conversations executable"
-];
+interface TradingSignal {
+  symbol: string;
+  rsi: number;
+  macd: {
+    macd: number;
+    signal: number;
+    histogram: number;
+  };
+  signal: 'BUY' | 'SELL' | 'NEUTRAL';
+  price: number;
+  timestamp: string;
+}
 
-export default function Landing() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+export default function TradersGuru() {
+  const [symbol, setSymbol] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [signal, setSignal] = useState<TradingSignal | null>(null);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsVisible(false);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % slogans.length);
-        setIsVisible(true);
-      }, 400);
-    }, 2800);
+  const analyzeSymbol = async () => {
+    if (!symbol.trim()) {
+      setError('Please enter a trading pair (e.g., BTCUSDT)');
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, []);
+    setLoading(true);
+    setError('');
+    setSignal(null);
+
+    try {
+      const response = await fetch(`/api/analyze?symbol=${symbol.toUpperCase()}`);
+      const data = await response.json() as TradingSignal & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze');
+      }
+
+      setSignal(data as TradingSignal);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to analyze symbol');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSignalColor = (sig: string) => {
+    if (sig === 'BUY') return 'text-green-400';
+    if (sig === 'SELL') return 'text-red-400';
+    return 'text-yellow-400';
+  };
+
+  const getSignalBg = (sig: string) => {
+    if (sig === 'BUY') return 'bg-green-500/20 border-green-500/50';
+    if (sig === 'SELL') return 'bg-red-500/20 border-red-500/50';
+    return 'bg-yellow-500/20 border-yellow-500/50';
+  };
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-black text-white">
-      {/* Enhanced animated aurora background layers */}
-      <div className="absolute inset-0 bg-aurora-layer-1" />
-      <div className="absolute inset-0 bg-aurora-layer-2" />
-      <div className="absolute inset-0 bg-aurora-layer-3" />
-      
-      {/* Floating particles overlay */}
-      <div className="absolute inset-0 bg-particles" />
-      
-      {/* Main content - centered */}
-      <main className="relative z-10 h-full flex flex-col items-center justify-center px-6">
-        <h1 className="text-center text-[clamp(28px,6vw,64px)] font-medium tracking-tight mb-4">
-          Turn Chats into Apps
-        </h1>
-        
-        {/* Rotating slogans */}
-        <div className="mt-4 h-8 md:h-10 overflow-hidden flex items-center justify-center">
-          <span
-            className={`inline-block text-center text-[clamp(18px,3vw,32px)] font-light transition-all duration-[400ms] ease-in-out ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-            }`}
-          >
-            {slogans[currentIndex]}
-          </span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Traders Guru
+          </h1>
+          <p className="text-xl text-gray-300">
+            AI-Powered Crypto Trading Signals
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            RSI & MACD Analysis for Perpetual/Futures Trading
+          </p>
         </div>
-      </main>
-      
-      {/* Start Prompting arrow pointing left - bottom left */}
-      <div className="absolute left-6 md:left-8 bottom-[5%] z-20 flex items-center gap-3 arrow-point-left">
-        <div className="flex items-center gap-2 text-white/80 font-medium text-sm md:text-base">
-          <svg 
-            className="w-5 h-5 md:w-6 md:h-6 animate-bounce-horizontal" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Start prompting</span>
+
+        {/* Input Section */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 mb-8">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              onKeyPress={(e) => e.key === 'Enter' && analyzeSymbol()}
+              placeholder="Enter trading pair (e.g., BTCUSDT)"
+              className="flex-1 px-6 py-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <button
+              onClick={analyzeSymbol}
+              disabled={loading}
+              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+            >
+              {loading ? 'Analyzing...' : 'Analyze'}
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300">
+              {error}
+            </div>
+          )}
         </div>
+
+        {/* Results Section */}
+        {signal && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 space-y-6">
+            {/* Signal Badge */}
+            <div className="text-center">
+              <div className={`inline-block px-8 py-4 rounded-2xl border-2 ${getSignalBg(signal.signal)}`}>
+                <div className="text-sm text-gray-300 mb-1">Trading Signal</div>
+                <div className={`text-4xl font-bold ${getSignalColor(signal.signal)}`}>
+                  {signal.signal}
+                </div>
+              </div>
+            </div>
+
+            {/* Price Info */}
+            <div className="text-center border-b border-white/10 pb-6">
+              <div className="text-2xl font-bold">{signal.symbol}</div>
+              <div className="text-3xl font-mono mt-2">${signal.price.toLocaleString()}</div>
+              <div className="text-xs text-gray-400 mt-2">{new Date(signal.timestamp).toLocaleString()}</div>
+            </div>
+
+            {/* Indicators */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* RSI */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <div className="text-sm text-gray-400 mb-2">RSI (14)</div>
+                <div className="text-3xl font-bold mb-3">{signal.rsi.toFixed(2)}</div>
+                <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      signal.rsi > 70 ? 'bg-red-500' : signal.rsi < 30 ? 'bg-green-500' : 'bg-yellow-500'
+                    }`}
+                    style={{ width: `${signal.rsi}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 mt-2">
+                  <span>Oversold (30)</span>
+                  <span>Overbought (70)</span>
+                </div>
+              </div>
+
+              {/* MACD */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <div className="text-sm text-gray-400 mb-2">MACD</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">MACD:</span>
+                    <span className="font-mono">{signal.macd.macd.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Signal:</span>
+                    <span className="font-mono">{signal.macd.signal.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Histogram:</span>
+                    <span className={`font-mono ${signal.macd.histogram > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {signal.macd.histogram.toFixed(4)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="text-xs text-gray-400 text-center pt-4 border-t border-white/10">
+              ⚠️ This is not financial advice. Always do your own research before trading.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+
